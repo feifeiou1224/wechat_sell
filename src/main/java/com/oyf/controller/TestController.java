@@ -1,4 +1,4 @@
-package com.oyf.Controller;
+package com.oyf.controller;
 
 
 import org.springframework.web.bind.annotation.RequestMapping;
