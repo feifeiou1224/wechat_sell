@@ -1,6 +1,7 @@
 package com.oyf.common;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.oyf.bean.ResultEnums;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;

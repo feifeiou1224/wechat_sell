@@ -1,4 +1,4 @@
-package com.oyf.common;
+package com.oyf.bean;
 
 public interface Constant {
 

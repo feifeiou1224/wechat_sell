@@ -1,4 +1,4 @@
-package com.oyf.common;
+package com.oyf.bean;
 
 import lombok.Getter;
 
@@ -13,7 +13,9 @@ public enum  ResultEnums {
     SUCCESS(0,"成功"),
     FAIL(1,"失败"),
     PRODUCT_UP(0,"正常"),
-    PRODUCT_DOWN(1,"商品下架");
+    PRODUCT_DOWN(1,"商品下架"),
+    PARAM_ERROR(1,"参数错误"),
+    NOT_EXIST(1,"商品不存在");
 
     private Integer code;
 

@@ -1,6 +1,8 @@
 package com.oyf.service.impl;
 
-import com.oyf.common.ResultEnums;
+import com.oyf.bean.OrderEnums;
+import com.oyf.bean.ProductEnums;
+import com.oyf.bean.ResultEnums;
 import com.oyf.common.ResultResponse;
 import com.oyf.dto.ProductCategoryDto;
 import com.oyf.dto.ProductInfoDto;
@@ -8,11 +10,14 @@ import com.oyf.entity.ProductInfo;
 import com.oyf.repository.ProductInfoRepository;
 import com.oyf.service.ProductCategoryService;
 import com.oyf.service.ProductInfoService;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -51,5 +56,35 @@ public class ProductInfoServiceImpl implements ProductInfoService {
         }).collect(Collectors.toList());
 
         return ResultResponse.success(categoryProductList);
+    }
+
+    @Override
+    public ResultResponse<ProductInfo> queryById(String productId) {
+
+        //首先判断productId是否为空
+        if (StringUtils.isBlank(productId)){
+            return ResultResponse.fail(ResultEnums.PARAM_ERROR.getMsg()+":"+productId);
+        }
+        Optional<ProductInfo> productInfoOptional = productInfoRepository.findById(productId);
+        //判断商品是否存在
+        if ( !productInfoOptional.isPresent()){
+            return ResultResponse.fail(ResultEnums.NOT_EXIST.getMsg()+":"+productId);
+        }
+        //获取商品对象
+        ProductInfo productInfo = productInfoOptional.get();
+        //判断商品的状态是否正常
+        if (productInfo.getProductStatus() != ResultEnums.PRODUCT_UP.getCode()){
+            return ResultResponse.fail(ResultEnums.PRODUCT_DOWN.getMsg());
+        }
+        //如果一切正常，返回商品的信息
+        return ResultResponse.success(productInfo);
+
+    }
+
+    @Override
+    @Transactional
+    public void updateProduct(ProductInfo productInfo) {
+        //Jpa自带方法：存在id就会修改，没有id就插入
+        productInfoRepository.save(productInfo);
     }
 }
