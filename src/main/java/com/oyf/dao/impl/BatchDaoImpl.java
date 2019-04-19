@@ -33,8 +33,8 @@ public class BatchDaoImpl<T> implements BatchDao<T> {
         for (int i = 0; i < size; i++) {
             em.persist(list.get(i));
             if (i % 100 == 0 || i == size - 1){//每100条或者集合长度进行一次批量插入
-                em.flush(); //io流的刷新
-                em.clear(); //io流的清理
+                em.flush(); //流的刷新方法
+                em.clear(); //流的清理方法
             }
         }
     }

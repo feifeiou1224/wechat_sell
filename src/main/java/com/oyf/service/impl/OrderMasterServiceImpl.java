@@ -2,33 +2,37 @@ package com.oyf.service.impl;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
-import com.oyf.bean.OrderEnums;
-import com.oyf.bean.PayEnums;
-import com.oyf.bean.ProductEnums;
-import com.oyf.bean.ResultEnums;
+import com.oyf.bean.*;
 import com.oyf.common.BigDecimalUtil;
 import com.oyf.common.IDUtils;
 import com.oyf.common.ResultResponse;
 import com.oyf.dto.OrderDetailDto;
+import com.oyf.dto.OrderMasterDetailDto;
 import com.oyf.dto.OrderMasterDto;
+import com.oyf.dto.PageParam;
 import com.oyf.entity.OrderDetail;
 import com.oyf.entity.OrderMaster;
 import com.oyf.entity.ProductInfo;
 import com.oyf.exception.CustomException;
+import com.oyf.repository.OrderDetailRepository;
 import com.oyf.repository.OrderMasterRepository;
+import com.oyf.repository.PageRepository;
+import com.oyf.repository.ProductInfoRepository;
 import com.oyf.service.OrderDetailService;
 import com.oyf.service.OrderMasterService;
 import com.oyf.service.ProductInfoService;
+import org.apache.commons.lang3.StringUtils;
+import org.hibernate.criterion.Order;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import javax.validation.Valid;
-import javax.validation.constraints.NotEmpty;
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Create Time: 2019年04月17日 15:22
@@ -47,10 +51,21 @@ public class OrderMasterServiceImpl implements OrderMasterService {
     @Autowired
     private OrderDetailService orderDetailService;
 
+    @Autowired
+    private PageRepository pageRepository;
+
+    @Autowired
+    private OrderDetailRepository orderDetailRepository;
+
+    @Autowired
+    private ProductInfoRepository productInfoRepository;
+
+
     @Override
     @Transactional
     //事务需要遇到异常才回滚
     public ResultResponse insertOrder(OrderMasterDto orderMasterDto) {
+
         //参数校验在controller层进行
         List<OrderDetailDto> items = orderMasterDto.getItems();
         //创建订单项集合
@@ -104,5 +119,74 @@ public class OrderMasterServiceImpl implements OrderMasterService {
         map.put("orderId",orderId);
         return ResultResponse.success(map);
 
+    }
+
+    @Override
+    public ResultResponse<List<OrderMaster>> getOrderList(PageParam pageParam) {
+
+        /*分页类，设置开始页数和每页条数*/
+        Pageable pageable = PageRequest.of(pageParam.getPage(),pageParam.getSize());
+
+        /*条件+分页查询*/
+        List<OrderMaster> orderMasterList = pageRepository.findByBuyerOpenid(pageParam.getOpenId(), pageable);
+
+        //转换成dto类型
+        List<OrderMasterDetailDto> collect = orderMasterList.stream().map(orderMaster -> OrderMasterDetailDto.adapter(orderMaster)).collect(Collectors.toList());
+
+        return ResultResponse.success(collect);
+
+    }
+
+    @Override
+    public ResultResponse<OrderMaster> getOrderDetail(String openId, String orderId) {
+
+        if (StringUtils.isBlank(openId) || StringUtils.isBlank(orderId)){
+            return ResultResponse.fail(ResultEnums.PARAM_ERROR.getMsg());
+        }
+
+        /*通过openId和orderId先查询出OrderMaster，然后通过orderId查出订单详情，set进OrderMaster*/
+        OrderMaster orderMaster = orderMasterRepository.findByBuyerOpenidAndOrderId(openId, orderId);
+        //需要转换成dto类型，因为多了一条字段
+        OrderMasterDetailDto adapter = OrderMasterDetailDto.adapter(orderMaster);
+        List<OrderDetail> detailList = orderDetailRepository.findByOrderId(orderId);
+        adapter.setOrderDetailList(detailList);
+
+        return ResultResponse.success(adapter);
+    }
+
+    @Override
+    @Transactional
+    public ResultResponse cancelOrder(String openId, String orderId) {
+
+        if (StringUtils.isBlank(openId) || StringUtils.isBlank(orderId)){
+            throw new CustomException(ResultEnums.PARAM_ERROR.getMsg());
+        }
+        OrderMaster orderMaster = orderMasterRepository.findByBuyerOpenidAndOrderId(openId, orderId);
+        if (orderMaster == null){
+            throw new CustomException("订单不存在！");
+        }
+        //判断订单的状态,取消订单应该是待支付的顶单,取消后还要修改订单的状态，还要把之前的商品消耗的库存存进去
+        if (orderMaster.getPayStatus() == PayEnums.WAIT.getCode()){
+            //修改订单状态为：已取消
+            orderMaster.setOrderStatus(OrderEnums.CANCEL.getCode());
+            //修改支付状态为：支付失败
+            orderMaster.setPayStatus(PayEnums.FAIL.getCode());
+            //修改商品的库存信息
+            //查询出订单项集合:订单项有商品id和购买的数量
+            List<OrderDetail> orderDetailList = orderDetailRepository.findByOrderId(orderId);
+            for ( OrderDetail orderDetail : orderDetailList){
+                String productId = orderDetail.getProductId();
+                Integer productQuantity = orderDetail.getProductQuantity();
+                try {
+                    productInfoRepository.AddProductStocksByProductId(productId,productQuantity);
+                }catch (Exception e){
+                    throw new CustomException("商品库存添加失败！");
+                }
+            }
+            //更新订单信息
+            orderMasterRepository.save(orderMaster);
+        }
+
+        return ResultResponse.success();
     }
 }
