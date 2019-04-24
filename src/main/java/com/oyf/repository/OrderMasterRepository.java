@@ -8,4 +8,5 @@ public interface OrderMasterRepository extends JpaRepository<OrderMaster,String>
     //根据openId和orderId查询出唯一的订单
     OrderMaster findByBuyerOpenidAndOrderId(String openId,String orderId);
 
+
 }

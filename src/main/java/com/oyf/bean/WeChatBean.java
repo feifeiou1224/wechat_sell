@@ -22,4 +22,12 @@ public class WeChatBean {
 
     private String secret;
 
+    private String mchId;
+
+    private String mchKey;
+
+    private String keyPath;
+
+    private String notifyUrl;
+
 }

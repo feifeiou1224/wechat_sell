@@ -32,7 +32,7 @@ public class WeChatConfig {
         WxMpInMemoryConfigStorage wxMpInMemoryConfigStorage = new WxMpInMemoryConfigStorage();
         wxMpInMemoryConfigStorage.setAppId(weChatBean.getAppId());
         wxMpInMemoryConfigStorage.setSecret(weChatBean.getSecret());
-        System.err.println(weChatBean.getAppId()+":"+weChatBean.getSecret());
+        //System.err.println(weChatBean.getAppId()+":"+weChatBean.getSecret());
         return wxMpInMemoryConfigStorage;
     }
 

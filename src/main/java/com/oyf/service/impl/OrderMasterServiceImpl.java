@@ -20,7 +20,9 @@ import com.oyf.repository.PageRepository;
 import com.oyf.repository.ProductInfoRepository;
 import com.oyf.service.OrderDetailService;
 import com.oyf.service.OrderMasterService;
+import com.oyf.service.PayService;
 import com.oyf.service.ProductInfoService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.criterion.Order;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,7 @@ import java.util.stream.Collectors;
  **/
 
 @Service
+@Slf4j
 public class OrderMasterServiceImpl implements OrderMasterService {
 
     @Autowired
@@ -59,6 +62,9 @@ public class OrderMasterServiceImpl implements OrderMasterService {
 
     @Autowired
     private ProductInfoRepository productInfoRepository;
+
+    @Autowired
+    private PayService payService;
 
 
     @Override
@@ -165,28 +171,47 @@ public class OrderMasterServiceImpl implements OrderMasterService {
         if (orderMaster == null){
             throw new CustomException("订单不存在！");
         }
-        //判断订单的状态,取消订单应该是待支付的顶单,取消后还要修改订单的状态，还要把之前的商品消耗的库存存进去
+        //判断订单的状态,取消订单如果是待支付的定单，不退钱，只把数量归还给库存
         if (orderMaster.getPayStatus() == PayEnums.WAIT.getCode()){
             //修改订单状态为：已取消
             orderMaster.setOrderStatus(OrderEnums.CANCEL.getCode());
             //修改支付状态为：支付失败
             orderMaster.setPayStatus(PayEnums.FAIL.getCode());
-            //修改商品的库存信息
-            //查询出订单项集合:订单项有商品id和购买的数量
-            List<OrderDetail> orderDetailList = orderDetailRepository.findByOrderId(orderId);
-            for ( OrderDetail orderDetail : orderDetailList){
-                String productId = orderDetail.getProductId();
-                Integer productQuantity = orderDetail.getProductQuantity();
-                try {
-                    productInfoRepository.AddProductStocksByProductId(productId,productQuantity);
-                }catch (Exception e){
-                    throw new CustomException("商品库存添加失败！");
-                }
-            }
+            //修改库存
+            returnStocks(orderId);
             //更新订单信息
             orderMasterRepository.save(orderMaster);
         }
 
+        //判断订单的状态，退款订单应该是已经完成支付的订单，退钱并归还库存
+        if (orderMaster.getPayStatus() == PayEnums.FINISH.getCode()){
+            //修改库存
+            returnStocks(orderId);
+            //修改订单状态为：已取消
+            orderMaster.setOrderStatus(OrderEnums.CANCEL.getCode());
+            //更新订单信息
+            orderMasterRepository.save(orderMaster);
+            log.info("发起退款");
+            payService.refund(orderMaster);
+        }
         return ResultResponse.success();
     }
+
+    /** 修改商品库存的方法 */
+    @Transactional
+    public void returnStocks(String orderId){
+        //查询出订单项集合:订单项有商品id和购买的数量
+        List<OrderDetail> orderDetailList = orderDetailRepository.findByOrderId(orderId);
+        for ( OrderDetail orderDetail : orderDetailList){
+            String productId = orderDetail.getProductId();
+            Integer productQuantity = orderDetail.getProductQuantity();
+            try {
+                productInfoRepository.AddProductStocksByProductId(productId,productQuantity);
+            }catch (Exception e){
+                throw new CustomException("商品库存添加失败！");
+            }
+        }
+    }
+
+
 }

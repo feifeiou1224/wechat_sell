@@ -33,13 +33,15 @@ public class WeChatController {
     //查看文档需要一个returnUrl参数
     public String authorize(@RequestParam("returnUrl") String returnUrl) throws UnsupportedEncodingException {
         //自己编写获得openid的路径 在下面定义方法getUserInfo
-        String url = "http://xmcc.natapp1.cc/sell/wechat/getUserInfo";
+        String url = "http://xmccjyqs.natapp1.cc/sell/wechat/getUserInfo";
+        /*String url = "http://xinglin.natapp1.cc/sell/wechat/getUserInfo";*/
         //根据sdk文档获得路径  点击方法下载文档 很清晰的解释
         /**
          * 第一个参数是获得授权码code后回调的地址
          * 第二个是策略：获得简单的授权，还是希望获得用户的信息
          * 第三个参数是我们希望携带的参数:查看API文档需要返回returnUrl 所以我们就携带它
          */
+        log.info("returnId:{}",returnUrl);
         String redirectUrl = wxMpService.oauth2buildAuthorizationUrl(url, WxConsts.OAuth2Scope.SNSAPI_USERINFO, URLEncoder.encode(returnUrl,"UTF-8"));
         return "redirect:"+redirectUrl;
 

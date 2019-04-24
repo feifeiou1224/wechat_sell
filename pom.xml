@@ -106,12 +106,25 @@
 			<version>3.3.0</version>
 		</dependency>
 
+		<!-- 解决RED BOLD HIGHLIGHT -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-configuration-processor</artifactId>
 			<optional>true</optional>
 		</dependency>
 
+		<!-- 微信支付 -->
+		<dependency>
+			<groupId>cn.springboot</groupId>
+			<artifactId>best-pay-sdk</artifactId>
+			<version>1.1.0</version>
+		</dependency>
+
+		<!-- freemarker -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-freemarker</artifactId>
+		</dependency>
 
 	</dependencies>
 
